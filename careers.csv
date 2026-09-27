@@ -1,0 +1,65 @@
+career,category,skills
+Frontend Developer,Web & Mobile,HTML:3;CSS:3;JavaScript:3;React:3;TypeScript:2;Git:2;Tailwind CSS:2;REST API:2
+Backend Developer (Python),Software Engineering,Python:3;Django:3;FastAPI:3;SQL:3;REST API:3;Docker:2;Git:2;Redis:2
+Backend Developer (Java),Software Engineering,Java:3;Spring Boot:3;SQL:3;Hibernate:2;REST API:3;Microservices:3;Git:2;Docker:2
+Backend Developer (Node.js),Software Engineering,JavaScript:3;Node.js:3;Express.js:3;TypeScript:2;MongoDB:3;SQL:2;REST API:3;Git:2
+Backend Developer (Go / Golang),Software Engineering,Go:3;Microservices:3;REST API:3;Docker:3;Kubernetes:2;SQL:3;Git:2;gRPC:2
+Full Stack Developer (MERN),Web & Mobile,MongoDB:3;Express.js:3;React:3;Node.js:3;JavaScript:3;TypeScript:2;Git:2;REST API:2
+Full Stack Developer (Python / Web),Web & Mobile,Python:3;Django:3;JavaScript:2;HTML:3;CSS:3;SQL:3;Git:2;REST API:2
+Software Engineer (Core & Systems),Software Engineering,DSA:3;OOP:3;System Design:3;Git:2;SQL:2;C++:2;Java:2;Problem Solving:3
+C++ Systems Developer (HFT / Low Latency),Software Engineering,C++:3;DSA:3;Multithreading:3;Linux:3;Networking:2;Low Latency:3;Memory Management:3
+Rust Systems Engineer,Software Engineering,Rust:3;Linux:3;Memory Safety:3;Concurrency:3;Git:2;System Design:2;WebAssembly:2
+API & Microservices Architect,Software Engineering,Microservices:3;REST API:3;System Design:3;Docker:3;Kubernetes:2;OAuth:2;gRPC:2
+Android Developer,Web & Mobile,Kotlin:3;Java:3;Android SDK:3;Jetpack Compose:3;Git:2;REST API:2;MVVM:2
+iOS Developer,Web & Mobile,Swift:3;iOS SDK:3;SwiftUI:3;Xcode:3;Git:2;REST API:2;CocoaPods:2
+Cross-Platform Mobile Developer (Flutter),Web & Mobile,Flutter:3;Dart:3;Mobile Development:3;REST API:2;State Management:2;Git:2;Firebase:2
+React Native Developer,Web & Mobile,React Native:3;JavaScript:3;React:3;TypeScript:2;Redux:2;Git:2;REST API:2
+Data Analyst,Data & Analytics,SQL:3;Excel:3;Python:2;Power BI:3;Data Visualization:3;Statistics:2;Tableau:2
+Data Scientist,Data & Analytics,Python:3;SQL:3;Statistics:3;Machine Learning:3;Pandas:3;Scikit-Learn:3;Data Visualization:2
+Data Engineer,Data & Analytics,Python:3;SQL:3;ETL:3;Apache Spark:3;Data Warehousing:3;Airflow:2;Kafka:2;Cloud:2
+Machine Learning Engineer,AI & Machine Learning,Python:3;Machine Learning:3;Deep Learning:3;Scikit-Learn:3;PyTorch:3;Docker:2;Git:2;MLOps:2
+AI Engineer,AI & Machine Learning,Python:3;Machine Learning:3;Deep Learning:3;TensorFlow:3;PyTorch:3;REST API:2;Docker:2
+Generative AI & LLM Engineer,AI & Machine Learning,Python:3;LLM:3;LangChain:3;RAG:3;Vector Database:3;Prompt Engineering:2;OpenAI API:2;HuggingFace:2
+Deep Learning Engineer,AI & Machine Learning,Python:3;Deep Learning:3;PyTorch:3;TensorFlow:3;Neural Networks:3;Mathematics:2;GPU Computing:2
+Computer Vision Engineer,AI & Machine Learning,Python:3;Computer Vision:3;OpenCV:3;Deep Learning:3;PyTorch:3;YOLO:2;Image Processing:2
+NLP Engineer,AI & Machine Learning,Python:3;NLP:3;Transformers:3;HuggingFace:3;Machine Learning:2;Spacy:2;Deep Learning:2
+MLOps Engineer,AI & Machine Learning,Python:3;Machine Learning:3;Docker:3;Kubernetes:3;CI/CD:3;MLflow:3;Cloud:2;Git:2
+Business Intelligence (BI) Developer,Data & Analytics,SQL:3;Power BI:3;Tableau:3;DAX:3;Data Modeling:3;Excel:2;ETL:2
+Database Administrator (DBA),Data & Analytics,SQL:3;Database:3;PostgreSQL:3;MySQL:3;Linux:2;Backup & Recovery:3;Performance Tuning:3;Security:2
+Big Data Architect,Data & Analytics,Apache Spark:3;Hadoop:3;Kafka:3;SQL:3;Data Warehousing:3;Python:2;Cloud:3;System Design:3
+DevOps Engineer,Cloud & DevOps,Linux:3;Docker:3;Kubernetes:3;CI/CD:3;Terraform:3;Git:3;AWS:2;Bash Scripting:2
+Site Reliability Engineer (SRE),Cloud & DevOps,Linux:3;Kubernetes:3;Monitoring:3;Prometheus:3;Grafana:3;Python:2;Networking:2;Incident Management:2
+Cloud Engineer,Cloud & DevOps,Cloud:3;AWS:3;Azure:2;Linux:3;Networking:2;Terraform:2;Docker:2;Security:2
+AWS Solutions Architect,Cloud & DevOps,AWS:3;Cloud Architecture:3;System Design:3;Networking:3;IAM:3;Security:2;Cost Optimization:2
+Azure Cloud Engineer,Cloud & DevOps,Azure:3;Cloud:3;PowerShell:2;Linux:2;Networking:2;Docker:2;Terraform:2
+GCP Cloud Engineer,Cloud & DevOps,GCP:3;Cloud:3;Kubernetes:3;Linux:2;Networking:2;Terraform:2;BigQuery:2
+Platform Engineer,Cloud & DevOps,Kubernetes:3;Docker:3;Terraform:3;Linux:3;Go:2;CI/CD:3;Helm:2;Developer Experience:2
+Infrastructure as Code (IaC) Engineer,Cloud & DevOps,Terraform:3;Ansible:3;Cloud:3;CI/CD:3;Linux:2;Git:3;Python:2
+Cybersecurity Analyst,Cybersecurity,Cybersecurity:3;Networking:3;SIEM:3;Incident Response:3;Linux:2;Threat Analysis:2;Wireshark:2
+SOC Analyst,Cybersecurity,SIEM:3;Splunk:3;Incident Response:3;Networking:2;Cybersecurity:3;Threat Intelligence:2;Log Analysis:3
+Penetration Tester (Ethical Hacker),Cybersecurity,Ethical Hacking:3;Penetration Testing:3;Burp Suite:3;Metasploit:3;Linux:3;Networking:3;Web Security:3;Python:2
+Application Security (AppSec) Engineer,Cybersecurity,OWASP:3;Web Security:3;SAST/DAST:3;Code Review:3;Cybersecurity:2;Python:2;Secure Coding:3
+Cloud Security Engineer,Cybersecurity,Cloud Security:3;IAM:3;AWS:2;Azure:2;Networking:3;Cybersecurity:3;Compliance:2;Linux:2
+Digital Forensics & Incident Response,Cybersecurity,Forensics:3;Incident Response:3;Malware Analysis:3;Wireshark:2;Linux:2;Windows Internals:2;Memory Analysis:2
+Cryptography & Security Engineer,Cybersecurity,Cryptography:3;Cybersecurity:3;Security Protocols:3;Mathematics:2;C++:2;Python:2;Network Security:2
+QA Automation Engineer,Quality Assurance & Testing,Selenium:3;Python:3;Java:2;Test Automation:3;Git:2;CI/CD:2;PyTest:2;API Testing:2
+SDET (Software Development Engineer in Test),Quality Assurance & Testing,Java:3;Python:3;Selenium:3;Cypress:2;API Testing:3;Postman:3;DSA:2;CI/CD:2
+Performance Test Engineer,Quality Assurance & Testing,JMeter:3;Performance Testing:3;Load Testing:3;SQL:2;Monitoring:2;APM Tools:2;Linux:2
+Manual QA & API Tester,Quality Assurance & Testing,Manual Testing:3;API Testing:3;Postman:3;Bug Tracking:3;Jira:3;SQL:2;Test Planning:2
+Network Engineer,Systems & Infrastructure,Networking:3;TCP/IP:3;Cisco:3;Routing & Switching:3;Firewalls:3;Wireshark:2;DNS/DHCP:2
+Linux System Administrator,Systems & Infrastructure,Linux:3;Bash Scripting:3;Networking:2;Security:2;System Administration:3;Troubleshooting:3;SSH:2
+Windows System Administrator,Systems & Infrastructure,Windows Server:3;Active Directory:3;PowerShell:3;Hyper-V:2;Networking:2;Security:2
+Embedded Systems Engineer,Embedded & Hardware,C:3;C++:3;Microcontrollers:3;Embedded Systems:3;RTOS:3;Electronics:2;I2C/SPI:2
+Firmware Engineer,Embedded & Hardware,C:3;Assembly:2;Microcontrollers:3;Firmware:3;Hardware Debugging:3;C++:2;RTOS:2
+IoT Solutions Engineer,Embedded & Hardware,IoT:3;Python:2;C++:2;MQTT:3;Sensors:2;Raspberry Pi/Arduino:2;Networking:2;Cloud IoT:2
+Robotics Software Engineer,Embedded & Hardware,ROS:3;C++:3;Python:3;Robotics:3;Computer Vision:2;Control Systems:2;Linux:2
+Game Developer (Unity),Game Development & AR/VR,Unity:3;C#:3;Game Development:3;3D Math:2;Game Physics:2;Git:2;Shader:2
+Unreal Engine Developer,Game Development & AR/VR,Unreal Engine:3;C++:3;Game Development:3;Blueprints:3;3D Math:2;Optimization:2
+AR/VR Developer,Game Development & AR/VR,Unity:3;Unreal Engine:2;C#:3;AR/VR:3;3D Modeling:2;OpenXR:2;Computer Vision:2
+Blockchain Developer,Blockchain & Web3,Blockchain:3;Solidity:3;Ethereum:3;Smart Contracts:3;Web3.js:2;Cryptography:2;Hardhat:2
+Smart Contract Security Auditor,Blockchain & Web3,Solidity:3;Smart Contracts:3;Security Auditing:3;EVM:3;Cryptography:2;Blockchain:3
+UI/UX Designer,Product & Design,Figma:3;UI Design:3;UX Design:3;Wireframing:3;Prototyping:3;Design Systems:3;User Research:2
+Product Designer,Product & Design,Figma:3;Product Design:3;UX Research:3;Prototyping:3;Design Systems:2;Interaction Design:2
+Technical Product Manager (TPM),Product & Design,Product Management:3;System Design:2;Agile:3;Scrum:3;Data Analytics:2;Roadmap Planning:3;User Stories:3
+Technical Writer & DevRel,Product & Design,Technical Writing:3;Documentation:3;Git:2;Markdown:3;API Documentation:3;Communication:3;Developer Relations:2
+Solutions Architect,Systems & Infrastructure,System Design:3;Cloud:3;Enterprise Architecture:3;Security:2;Networking:2;Microservices:3;Scalability:3
