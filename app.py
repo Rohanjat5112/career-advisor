@@ -6,21 +6,28 @@ import sqlite3
 import hashlib
 from difflib import SequenceMatcher
 from collections import Counter
+from pathlib import Path
+from datetime import datetime
 
 # =========================================================
-# PAGE CONFIGURATION
+# PATENT-ALIGNED CAREER & SKILL GAP ADVISOR
+# =========================================================
+# This prototype follows the workflow described in the supplied
+# Invention Disclosure Form:
+# Student Profile -> Assessment -> Structured Skill Profile ->
+# Career Matching -> Skill-Gap Analysis -> Gap Prioritization ->
+# Personalized Learning Roadmap -> Reassessment/Profile Update.
+#
+# The implementation is a software prototype; it does not by itself
+# establish patentability, novelty, or legal scope.
 # =========================================================
 
 st.set_page_config(
-    page_title="Career & Skill Gap AI Advisor",
-    page_icon="🚀",
+    page_title="AI Personalized Career & Skill Gap Advisor",
+    page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-# =========================================================
-# DATABASE & AUTHENTICATION SETUP (SQLite)
-# =========================================================
 
 DB_PATH = "users.db"
 
@@ -37,7 +44,6 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    # Check if default demo user exists
     c.execute("SELECT id FROM users WHERE username = 'demo'")
     if not c.fetchone():
         demo_hash = hashlib.sha256("demo123".encode()).hexdigest()
@@ -55,13 +61,14 @@ def authenticate_user(username, password):
     c = conn.cursor()
     pwd_hash = hashlib.sha256(password.strip().encode()).hexdigest()
     c.execute(
-        "SELECT username, full_name, email FROM users WHERE LOWER(username) = LOWER(?) AND password_hash = ?",
+        "SELECT username, full_name, email FROM users "
+        "WHERE LOWER(username)=LOWER(?) AND password_hash=?",
         (username.strip(), pwd_hash)
     )
-    user = c.fetchone()
+    row = c.fetchone()
     conn.close()
-    if user:
-        return {"username": user[0], "full_name": user[1], "email": user[2]}
+    if row:
+        return {"username": row[0], "full_name": row[1], "email": row[2]}
     return None
 
 def register_user(username, full_name, email, password):
@@ -75,40 +82,45 @@ def register_user(username, full_name, email, password):
         )
         conn.commit()
         conn.close()
-        return True, "Account created successfully!"
+        return True, "Account created successfully."
     except sqlite3.IntegrityError:
         conn.close()
-        return False, "This username already exists. Please pick another one."
-    except Exception as e:
+        return False, "This username already exists."
+    except Exception as exc:
         conn.close()
-        return False, f"Error creating account: {str(e)}"
+        return False, f"Error creating account: {exc}"
 
 # =========================================================
-# SESSION STATE INITIALIZATION
+# SESSION STATE
 # =========================================================
-
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-if "user" not in st.session_state:
-    st.session_state.user = None
-
-if "analysis_done" not in st.session_state:
-    st.session_state.analysis_done = False
-
-if "student_skills" not in st.session_state:
-    st.session_state.student_skills = []
-
-if "results" not in st.session_state:
-    st.session_state.results = []
+DEFAULTS = {
+    "authenticated": False,
+    "user": None,
+    "analysis_done": False,
+    "student_profile": {},
+    "student_skills": [],
+    "results": [],
+    "reassessment_history": [],
+}
+for key, value in DEFAULTS.items():
+    if key not in st.session_state:
+        st.session_state[key] = value.copy() if isinstance(value, dict) else list(value) if isinstance(value, list) else value
 
 if "skill_input_text" not in st.session_state:
     st.session_state.skill_input_text = "Python, SQL, Git, DSA, Machine Learning"
 
-# =========================================================
-# ADVANCED CUSTOM STYLING (Modern UI / Glassmorphism)
-# =========================================================
+if "project_skills_text" not in st.session_state:
+    st.session_state.project_skills_text = ""
 
+if "certification_skills_text" not in st.session_state:
+    st.session_state.certification_skills_text = ""
+
+if "assessment_skills_text" not in st.session_state:
+    st.session_state.assessment_skills_text = ""
+
+# =========================================================
+# UI STYLE
+# =========================================================
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -332,106 +344,6 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
-# =========================================================
-# AUTHENTICATION SCREEN (LOGIN / SIGN UP)
-# =========================================================
-
-def render_auth_page():
-    _, center_col, _ = st.columns([1, 2, 1])
-    with center_col:
-        st.markdown("""
-        <div style="text-align: center; padding: 1.2rem 0 0.8rem 0;">
-            <div class="auth-badge">🚀 NEXT-GEN AI CAREER PLATFORM</div>
-            <h1 style="font-size: 2.3rem; font-weight: 800; margin-top: 0.3rem; margin-bottom: 0.4rem; background: linear-gradient(90deg, #FFFFFF 0%, #C7D2FE 50%, #818CF8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.02em;">
-                Career & Skill Gap AI Advisor
-            </h1>
-            <p style="color: #94A3B8; font-size: 0.98rem; max-width: 580px; margin: 0 auto 0.8rem auto; line-height: 1.5;">
-                Sign in to analyze your skills across <b>64+ tech careers</b>, run What-If simulations, and unlock personalized roadmaps.
-            </p>
-            <div style="margin-bottom: 1.2rem;">
-                <span class="auth-tag">🎯 64+ Tech Roles</span>
-                <span class="auth-tag">🔮 What-If Simulator</span>
-                <span class="auth-tag">🗺️ Smart Roadmap</span>
-                <span class="auth-tag">🔒 SQLite Protected</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        with st.container(border=True):
-            auth_tab1, auth_tab2 = st.tabs(["🔑 Sign In", "✨ Create Account"])
-
-            with auth_tab1:
-                st.markdown("<br>", unsafe_allow_html=True)
-                with st.form("login_form"):
-                    username = st.text_input("Username", placeholder="e.g. rohan_jat or demo")
-                    password = st.text_input("Password", type="password", placeholder="Enter your password")
-                    submit_login = st.form_submit_button("🚀 Sign In to Dashboard", type="primary", use_container_width=True)
-
-                    if submit_login:
-                        if not username.strip() or not password.strip():
-                            st.error("Please enter both username and password.")
-                        else:
-                            user = authenticate_user(username, password)
-                            if user:
-                                st.session_state.authenticated = True
-                                st.session_state.user = user
-                                st.success(f"Welcome back, {user['full_name']}! Redirecting to dashboard...")
-                                st.rerun()
-                            else:
-                                st.error("❌ Invalid username or password. Please try again.")
-
-                st.markdown("<div style='text-align:center; margin: 1.3rem 0 0.8rem 0; color: #64748B; font-size: 0.85rem; font-weight: 600;'>— OR QUICK 1-CLICK ACCESS —</div>", unsafe_allow_html=True)
-                if st.button("⚡ Instant Demo Login (demo / demo123)", use_container_width=True):
-                    user = authenticate_user("demo", "demo123")
-                    if user:
-                        st.session_state.authenticated = True
-                        st.session_state.user = user
-                        st.rerun()
-                st.caption("💡 Instant access without registration for quick testing and demonstration.")
-
-            with auth_tab2:
-                st.markdown("<br>", unsafe_allow_html=True)
-                with st.form("signup_form"):
-                    reg_name = st.text_input("Full Name", placeholder="e.g. Rohan Jat")
-                    reg_username = st.text_input("Choose Username", placeholder="e.g. rohan_jat")
-                    reg_email = st.text_input("Email Address", placeholder="e.g. rohanjat@example.com")
-                    reg_password = st.text_input("Create Password", type="password", placeholder="At least 4 characters")
-                    reg_confirm = st.text_input("Confirm Password", type="password", placeholder="Re-enter password to confirm")
-                    submit_reg = st.form_submit_button("✨ Register & Enter Dashboard", type="primary", use_container_width=True)
-
-                    if submit_reg:
-                        if not reg_name.strip() or not reg_username.strip() or not reg_password.strip():
-                            st.error("Please fill in all required fields (Full Name, Username, Password).")
-                        elif len(reg_password) < 4:
-                            st.error("Password must be at least 4 characters long.")
-                        elif reg_password != reg_confirm:
-                            st.error("Passwords do not match. Please verify.")
-                        else:
-                            success, msg = register_user(reg_username, reg_name, reg_email, reg_password)
-                            if success:
-                                st.success("🎉 Account created successfully! Logging you in...")
-                                user = authenticate_user(reg_username, reg_password)
-                                st.session_state.authenticated = True
-                                st.session_state.user = user
-                                st.rerun()
-                            else:
-                                st.error(f"❌ {msg}")
-
-        st.markdown("""
-        <div style="text-align:center; color:#64748B; font-size:0.82rem; margin-top:1.5rem;">
-            🔒 Secure SQLite Database (users.db) • Passwords Encrypted with SHA-256
-        </div>
-        """, unsafe_allow_html=True)
-
-# Check if authenticated
-if not st.session_state.authenticated:
-    render_auth_page()
-    st.stop()
-
-# =========================================================
-# COMPREHENSIVE SKILL ALIASES & NORMALIZATION
-# =========================================================
 
 ALIASES = {
     # Programming Languages
@@ -705,7 +617,7 @@ ALIASES = {
 }
 
 def normalize_skill(skill):
-    skill = skill.lower().strip()
+    skill = str(skill).lower().strip()
     skill = re.sub(r"\s+", " ", skill)
     if skill in ALIASES:
         return ALIASES[skill]
@@ -714,9 +626,11 @@ def normalize_skill(skill):
         return ALIASES[compact]
     return skill
 
-# =========================================================
-# SIMILARITY & COVERAGE ALGORITHM
-# =========================================================
+def parse_skill_text(value):
+    if not value:
+        return []
+    parts = re.split(r"[,;\n]+", str(value))
+    return [normalize_skill(x) for x in parts if x.strip()]
 
 def similarity(a, b):
     a = normalize_skill(a)
@@ -727,22 +641,14 @@ def similarity(a, b):
         return 0.90
     return SequenceMatcher(None, a, b).ratio()
 
-def is_skill_covered(required_skill, student_skills):
-    best_score = 0.0
-    for student_skill in student_skills:
-        score = similarity(required_skill, student_skill)
-        best_score = max(best_score, score)
-
-    if best_score >= 0.80:
-        return "strong", best_score
-    if best_score >= 0.62:
-        return "partial", best_score
-    return "missing", best_score
+def best_similarity(required_skill, supplied_skills):
+    if not supplied_skills:
+        return 0.0
+    return max(similarity(required_skill, s) for s in supplied_skills)
 
 # =========================================================
 # DEPENDENCY GRAPH
 # =========================================================
-
 DEPENDENCIES = {
     "css": ["html"],
     "javascript": ["html", "css"],
@@ -803,152 +709,389 @@ def dependency_score(skill, student_skills):
     prereqs = DEPENDENCIES.get(skill, [])
     if not prereqs:
         return 1.0, []
-    missing_prereqs = []
-    covered = 0
-    for p in prereqs:
-        st_val, _ = is_skill_covered(p, student_skills)
-        if st_val == "strong":
+    missing = []
+    covered = 0.0
+    for prereq in prereqs:
+        score = best_similarity(prereq, student_skills)
+        if score >= 0.80:
             covered += 1
-        elif st_val == "partial":
+        elif score >= 0.62:
             covered += 0.5
         else:
-            missing_prereqs.append(p)
-    return covered / len(prereqs), missing_prereqs
+            missing.append(prereq)
+    return covered / len(prereqs), missing
 
 # =========================================================
-# DATA LOADING & CACHING
+# CAREER DATA
 # =========================================================
+FALLBACK_CAREERS = [
+    ("Software Developer", "Software Development", "python:3;dsa:3;oop:2;git:1;sql:2;rest api:2"),
+    ("Full Stack Developer", "Web Development", "html:1;css:1;javascript:3;react:3;node.js:2;sql:2;git:1;rest api:2"),
+    ("Data Scientist", "Data Science", "python:3;sql:2;statistics:3;pandas:2;numpy:2;machine learning:3;data visualization:1"),
+    ("ML Engineer", "AI / Machine Learning", "python:3;machine learning:3;deep learning:3;pytorch:2;docker:1;git:1"),
+    ("AI / LLM Engineer", "AI / Machine Learning", "python:3;machine learning:3;deep learning:2;llm:3;langchain:2;rag:3;vector database:2"),
+    ("Cloud / DevOps Engineer", "Cloud & DevOps", "linux:2;git:1;docker:3;kubernetes:3;aws:3;ci/cd:2;terraform:2;networking:2"),
+    ("Cybersecurity Analyst", "Cybersecurity", "networking:3;linux:2;cybersecurity:3;wireshark:2;siem:2;owasp:2;python:1"),
+    ("QA Automation Engineer", "Testing & QA", "python:2;selenium:3;pytest:2;api testing:2;git:1;sql:1"),
+    ("UI/UX Designer", "Design", "figma:3;ui design:3;ux design:3;wireframing:2;prototyping:2;design systems:1"),
+]
 
 @st.cache_data
 def load_careers():
-    df = pd.read_csv("careers.csv")
-    careers = []
-    for _, row in df.iterrows():
-        skill_parts = str(row["skills"]).split(";")
-        skills = []
-        for part in skill_parts:
-            part = part.strip()
-            if ":" not in part:
-                continue
-            skill, weight = part.rsplit(":", 1)
-            skills.append({
-                "name": normalize_skill(skill),
-                "original_name": skill.strip(),
-                "weight": int(weight)
+    path = Path("careers.csv")
+    rows = []
+    if path.exists():
+        try:
+            df = pd.read_csv(path)
+            for _, row in df.iterrows():
+                raw = str(row.get("skills", ""))
+                skills = []
+                for part in raw.split(";"):
+                    if ":" not in part:
+                        continue
+                    skill, weight = part.rsplit(":", 1)
+                    try:
+                        weight = int(float(weight))
+                    except ValueError:
+                        weight = 1
+                    skills.append({
+                        "name": normalize_skill(skill),
+                        "original_name": skill.strip(),
+                        "weight": max(1, min(5, weight)),
+                    })
+                if skills:
+                    rows.append({
+                        "career": str(row.get("career", "Career")).strip(),
+                        "category": str(row.get("category", "General")).strip(),
+                        "skills": skills,
+                        "communication_weight": float(row.get("communication_weight", 10) or 10),
+                        "practical_weight": float(row.get("practical_weight", 15) or 15),
+                        "academic_weight": float(row.get("academic_weight", 5) or 5),
+                    })
+        except Exception:
+            rows = []
+
+    if not rows:
+        for career, category, raw in FALLBACK_CAREERS:
+            skills = []
+            for part in raw.split(";"):
+                skill, weight = part.rsplit(":", 1)
+                skills.append({
+                    "name": normalize_skill(skill),
+                    "original_name": skill.strip(),
+                    "weight": int(weight),
+                })
+            rows.append({
+                "career": career,
+                "category": category,
+                "skills": skills,
+                "communication_weight": 10,
+                "practical_weight": 15,
+                "academic_weight": 5,
             })
-        careers.append({
-            "career": row["career"],
-            "category": row["category"],
-            "skills": skills
-        })
-    return careers
+    return rows
 
 # =========================================================
-# CAREER ANALYSIS LOGIC
+# EVIDENCE-BASED STUDENT PROFILE
 # =========================================================
+EVIDENCE_WEIGHTS = {
+    "self_declared": 0.55,
+    "assessment": 0.85,
+    "project": 0.90,
+    "certification": 0.95,
+    "academic": 0.70,
+}
 
-def analyze_career(career, student_skills):
-    total_weight = 0
-    earned_weight = 0
-    strong = []
-    partial = []
-    missing = []
+def build_evidence_map(profile):
+    """
+    Multi-source skill evidence:
+    self-declared + technical assessment + projects + certifications.
+    """
+    evidence = {}
+    source_labels = {}
+    source_sets = [
+        ("self_declared", profile.get("skills", [])),
+        ("project", profile.get("project_skills", [])),
+        ("certification", profile.get("certification_skills", [])),
+        ("assessment", profile.get("assessment_skills", [])),
+    ]
+
+    for source, skills in source_sets:
+        for skill in skills:
+            skill = normalize_skill(skill)
+            if not skill:
+                continue
+            weight = EVIDENCE_WEIGHTS[source]
+            if source == "assessment":
+                weight *= max(0.0, min(1.0, float(profile.get("technical_assessment", 0)) / 100.0))
+            evidence.setdefault(skill, [])
+            source_labels.setdefault(skill, [])
+            evidence[skill].append(weight)
+            if source not in source_labels[skill]:
+                source_labels[skill].append(source.replace("_", " ").title())
+
+    combined = {}
+    for skill, weights in evidence.items():
+        confidence = 1.0
+        for w in weights:
+            confidence *= (1.0 - w)
+        combined[skill] = 1.0 - confidence
+
+    return combined, source_labels
+
+def evidence_for_skill(required_skill, evidence_map):
+    if not evidence_map:
+        return 0.0
+    best = 0.0
+    for skill, confidence in evidence_map.items():
+        sim = similarity(required_skill, skill)
+        best = max(best, confidence * sim)
+    return min(best, 1.0)
+
+def skill_status(confidence):
+    if confidence >= 0.75:
+        return "strong"
+    if confidence >= 0.45:
+        return "partial"
+    return "missing"
+
+def academic_readiness(cgpa, max_cgpa=10.0):
+    try:
+        return max(0.0, min(100.0, float(cgpa) / max_cgpa * 100.0))
+    except Exception:
+        return 0.0
+
+def communication_readiness(communication, grammar):
+    return max(0.0, min(100.0, (float(communication) * 0.6) + (float(grammar) * 0.4)))
+
+def practical_evidence_score(career, profile, evidence_map):
+    required = career.get("skills", [])
+    if not required:
+        return 0.0
+    project_skills = profile.get("project_skills", [])
+    cert_skills = profile.get("certification_skills", [])
+    project_hits = 0.0
+    cert_hits = 0.0
+    total = sum(x["weight"] for x in required) or 1
+    for item in required:
+        if best_similarity(item["name"], project_skills) >= 0.80:
+            project_hits += item["weight"]
+        if best_similarity(item["name"], cert_skills) >= 0.80:
+            cert_hits += item["weight"]
+    # Projects are treated as the primary practical evidence.
+    return min(100.0, ((project_hits / total) * 85.0) + ((cert_hits / total) * 15.0))
+
+def analyze_career(career, profile):
+    evidence_map, raw_evidence = build_evidence_map(profile)
+
+    total_weight = sum(x["weight"] for x in career["skills"]) or 1
+    earned_weight = 0.0
+    strong, partial, missing = [], [], []
 
     for item in career["skills"]:
-        s_name = item["name"]
-        orig_name = item["original_name"]
-        w = item["weight"]
-        total_weight += w
+        conf = evidence_for_skill(item["name"], evidence_map)
+        status = skill_status(conf)
+        contribution = item["weight"] * conf
 
-        status, score = is_skill_covered(s_name, student_skills)
         if status == "strong":
-            earned_weight += w
-            strong.append({"skill": orig_name, "weight": w})
+            strong.append({
+                "skill": item["original_name"],
+                "weight": item["weight"],
+                "confidence": conf,
+                "evidence": raw_evidence.get(normalize_skill(item["name"]), []),
+            })
         elif status == "partial":
-            earned_weight += w * 0.5
-            partial.append({"skill": orig_name, "weight": w})
+            partial.append({
+                "skill": item["original_name"],
+                "weight": item["weight"],
+                "confidence": conf,
+            })
         else:
-            missing.append({"skill": orig_name, "weight": w})
+            missing.append({
+                "skill": item["original_name"],
+                "weight": item["weight"],
+                "confidence": conf,
+            })
 
-    pct = 0 if total_weight == 0 else (earned_weight / total_weight) * 100
-    missing.sort(key=lambda x: x["weight"], reverse=True)
+        earned_weight += contribution
+
+    skill_coverage_pct = (earned_weight / total_weight) * 100.0
+    # Technical assessment is an explicit assessment input in the patent workflow.
+    technical_pct = (skill_coverage_pct * 0.75) + (float(profile.get("technical_assessment", 0)) * 0.25)
+    practical_pct = practical_evidence_score(career, profile, evidence_map)
+    communication_pct = communication_readiness(
+        profile.get("communication_score", 0),
+        profile.get("grammar_score", 0)
+    )
+    academic_pct = academic_readiness(profile.get("cgpa", 0))
+
+    # Career requirement mapping is represented by a weighted combination of
+    # technical, practical, communication and academic components.
+    # These weights can be changed per career through careers.csv columns.
+    cw = career.get("communication_weight", 10.0)
+    pw = career.get("practical_weight", 15.0)
+    aw = career.get("academic_weight", 5.0)
+    tw = max(1.0, 100.0 - cw - pw - aw)
+
+    overall = (
+        technical_pct * (tw / 100.0)
+        + practical_pct * (pw / 100.0)
+        + communication_pct * (cw / 100.0)
+        + academic_pct * (aw / 100.0)
+    )
+
+    missing.sort(key=lambda x: (-x["weight"], x["confidence"]))
 
     return {
         "career": career["career"],
         "category": career["category"],
-        "percentage": pct,
+        "percentage": overall,
+        "technical_pct": technical_pct,
+        "practical_pct": practical_pct,
+        "communication_pct": communication_pct,
+        "academic_pct": academic_pct,
         "strong": strong,
         "partial": partial,
         "missing": missing,
-        "total_skills": len(career["skills"])
+        "total_skills": len(career["skills"]),
+        "evidence_map": evidence_map,
     }
 
-def what_if_analysis(career, student_skills, new_skill):
-    before = analyze_career(career, student_skills)
-    simulated_skills = student_skills.copy()
-    simulated_skills.append(new_skill)
-    after = analyze_career(career, simulated_skills)
-    improvement = after["percentage"] - before["percentage"]
-    score, missing_prereqs = dependency_score(new_skill, student_skills)
+def what_if_analysis(career, profile, new_skill):
+    before = analyze_career(career, profile)
+    simulated = dict(profile)
+    simulated["skills"] = list(profile.get("skills", []))
+    simulated["skills"].append(normalize_skill(new_skill))
+    after = analyze_career(career, simulated)
+    readiness, missing_prereqs = dependency_score(new_skill, profile.get("skills", []))
     return {
         "before": before["percentage"],
         "after": after["percentage"],
-        "improvement": improvement,
-        "readiness": score,
-        "missing_prereqs": missing_prereqs
+        "improvement": after["percentage"] - before["percentage"],
+        "readiness": readiness,
+        "missing_prereqs": missing_prereqs,
     }
 
-def generate_roadmap(career_result, student_skills):
+def generate_roadmap(career_result, profile):
     roadmap = []
-    missing = career_result["missing"]
-    for item in missing:
+    student_skills = profile.get("skills", [])
+    for item in career_result["missing"]:
         skill = item["skill"]
         _, missing_prereqs = dependency_score(skill, student_skills)
         roadmap.append({
             "skill": skill,
             "weight": item["weight"],
-            "before": missing_prereqs
+            "confidence": item["confidence"],
+            "before": missing_prereqs,
         })
-    roadmap.sort(key=lambda x: (len(x["before"]), -x["weight"]))
+    roadmap.sort(key=lambda x: (len(x["before"]), -x["weight"], x["confidence"]))
     return roadmap
 
 # =========================================================
-# HEADER & HERO BANNER
+# AUTH PAGE
 # =========================================================
+def render_auth_page():
+    _, center, _ = st.columns([1, 2, 1])
+    with center:
+        st.markdown("""
+        <div style="text-align:center; padding:1.5rem 0 1rem;">
+            <div class="auth-badge">🎯 PATENT-ALIGNED PROTOTYPE</div>
+            <h1 style="font-size:2.2rem;font-weight:800;margin:.4rem 0;">
+                AI Personalized Career & Skill Gap Advisor
+            </h1>
+            <p style="color:#94A3B8;line-height:1.6;">
+                Unified student profile • multi-source evidence • career matching •
+                skill-gap prioritization • adaptive roadmap • reassessment
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        with st.container(border=True):
+            tab1, tab2 = st.tabs(["🔑 Sign In", "✨ Create Account"])
+            with tab1:
+                with st.form("login_form"):
+                    username = st.text_input("Username", placeholder="demo")
+                    password = st.text_input("Password", type="password", placeholder="demo123")
+                    submit = st.form_submit_button("🚀 Sign In", type="primary", use_container_width=True)
+                    if submit:
+                        user = authenticate_user(username, password)
+                        if user:
+                            st.session_state.authenticated = True
+                            st.session_state.user = user
+                            st.rerun()
+                        else:
+                            st.error("Invalid username or password.")
+                if st.button("⚡ Demo Login (demo / demo123)", use_container_width=True):
+                    st.session_state.authenticated = True
+                    st.session_state.user = authenticate_user("demo", "demo123")
+                    st.rerun()
+            with tab2:
+                with st.form("signup_form"):
+                    name = st.text_input("Full Name")
+                    username = st.text_input("Choose Username")
+                    email = st.text_input("Email")
+                    password = st.text_input("Create Password", type="password")
+                    confirm = st.text_input("Confirm Password", type="password")
+                    submit = st.form_submit_button("✨ Register", type="primary", use_container_width=True)
+                    if submit:
+                        if not name.strip() or not username.strip() or not password.strip():
+                            st.error("Full Name, Username and Password are required.")
+                        elif len(password) < 4:
+                            st.error("Password must be at least 4 characters.")
+                        elif password != confirm:
+                            st.error("Passwords do not match.")
+                        else:
+                            ok, msg = register_user(username, name, email, password)
+                            if ok:
+                                st.success(msg)
+                                st.session_state.authenticated = True
+                                st.session_state.user = authenticate_user(username, password)
+                                st.rerun()
+                            else:
+                                st.error(msg)
 
+if not st.session_state.authenticated:
+    render_auth_page()
+    st.stop()
+
+# =========================================================
+# HERO
+# =========================================================
 st.markdown("""
 <div class="hero-banner">
-    <div class="hero-title">⚡ Tech Career & Skill Gap AI Advisor</div>
+    <div class="hero-title">🎯 AI-Based Personalized Career Recommendation & Dynamic Skill Gap Analysis</div>
     <div class="hero-subtitle">
-        Analyze your skill profile against <b>64+ industry technology careers</b>. Identify skill gaps, test career improvements with What-If simulations, and generate an actionable learning roadmap.
+        A unified workflow that combines academic information, technical skills,
+        projects, certifications, interests, career goals and assessment evidence
+        to generate career-specific skill gaps, prioritized learning steps and
+        an updateable roadmap.
     </div>
     <div class="hero-tags">
-        <span class="hero-tag">🎯 Smart Weighted Matching</span>
-        <span class="hero-tag">📚 12 Tech Domains</span>
-        <span class="hero-tag">🔮 What-If Simulator</span>
-        <span class="hero-tag">🗺️ Dependency-Aware Roadmap</span>
-        <span class="hero-tag">💡 High-ROI Skill Discovery</span>
+        <span class="hero-tag">👤 Unified Student Profile</span>
+        <span class="hero-tag">🧾 Multi-Source Evidence</span>
+        <span class="hero-tag">🧠 Career Requirement Mapping</span>
+        <span class="hero-tag">📊 Skill-Gap Prioritization</span>
+        <span class="hero-tag">🗺️ Adaptive Roadmap</span>
+        <span class="hero-tag">🔄 Closed-Loop Reassessment</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# =========================================================
-# SIDEBAR CONTROLS
-# =========================================================
-
 careers = load_careers()
-all_categories = sorted(list(set(c["category"] for c in careers)))
+categories = sorted(set(c["category"] for c in careers))
 
+# =========================================================
+# SIDEBAR: CAREER REQUIREMENT / FILTER CONTROLS
+# =========================================================
 with st.sidebar:
-    # User Profile Header
-    current_user = st.session_state.user or {"full_name": "Student", "username": "student"}
-    st.markdown(f"""
-    <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(129, 140, 248, 0.3); border-radius: 12px; padding: 0.9rem 1.1rem; margin-bottom: 1rem;">
-        <div style="font-size: 0.75rem; color: #94A3B8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Current User</div>
-        <div style="font-size: 1.1rem; font-weight: 700; color: #EEF2FF; margin-top: 0.2rem;">👤 {current_user.get('full_name', 'Student')}</div>
-        <div style="font-size: 0.85rem; color: #A5B4FC;">@{current_user.get('username', 'user')}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    user = st.session_state.user or {"full_name": "Student", "username": "student"}
+    st.markdown(
+        f"<div style='background:rgba(99,102,241,.12);border:1px solid rgba(129,140,248,.3);"
+        f"border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem;'>"
+        f"<div style='font-size:.72rem;color:#94A3B8;font-weight:700;'>CURRENT USER</div>"
+        f"<div style='font-size:1.05rem;color:#EEF2FF;font-weight:700;'>👤 {user.get('full_name','Student')}</div>"
+        f"<div style='font-size:.8rem;color:#A5B4FC;'>@{user.get('username','student')}</div></div>",
+        unsafe_allow_html=True
+    )
 
     if st.button("🚪 Sign Out", use_container_width=True):
         st.session_state.authenticated = False
@@ -957,416 +1100,504 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown("### 🛠️ Career Filters & Settings")
-    
-    selected_category = st.selectbox(
-        "Domain / Track",
-        ["All Domains"] + all_categories,
-        help="Filter analysis by specific tech field"
+    st.markdown("### 🎯 Career Requirement Mapping")
+    target_career = st.selectbox(
+        "Target / Selected Career",
+        ["Auto-match from profile"] + [c["career"] for c in careers],
+        help="A selected career becomes the target requirement profile for detailed gap analysis."
     )
-    
-    min_match_filter = st.slider(
-        "Filter by Minimum Match %",
-        min_value=0,
-        max_value=90,
-        value=0,
-        step=5,
-        help="Only display careers that match at or above this percentage"
-    )
+    selected_category = st.selectbox("Domain / Track", ["All Domains"] + categories)
+    min_match = st.slider("Minimum Match %", 0, 90, 0, 5)
 
     st.markdown("---")
-    st.markdown("### 🎓 Quick Profile Presets")
-    st.caption("Click any profile to instantly test realistic skillsets:")
-
-    PRESETS = {
-        "💻 Full Stack Web": "HTML, CSS, JavaScript, React, Node.js, Express, MongoDB, Git, REST API",
-        "📊 Data Scientist": "Python, SQL, Statistics, Machine Learning, Pandas, Scikit-Learn, Data Visualization",
-        "🤖 AI & LLM Engineer": "Python, Machine Learning, Deep Learning, PyTorch, LLM, LangChain, RAG",
-        "☁️ DevOps & Cloud": "Linux, Git, Docker, Kubernetes, AWS, CI/CD, Terraform, Bash Scripting",
-        "🛡️ Cybersecurity": "Linux, Networking, Python, Wireshark, Cybersecurity, Ethical Hacking, SIEM",
-        "📱 Mobile App Dev": "Kotlin, Java, Android SDK, Jetpack Compose, Git, REST API",
-        "🎨 UI/UX Designer": "Figma, UI Design, UX Design, Wireframing, Prototyping, Design Systems",
-        "⚡ C++ / Core Systems": "C++, DSA, OOP, System Design, Multithreading, Linux, SQL"
+    st.markdown("### ⚡ Profile Presets")
+    presets = {
+        "💻 Full Stack": "HTML, CSS, JavaScript, React, Node.js, SQL, Git, REST API",
+        "🤖 AI / LLM": "Python, Machine Learning, Deep Learning, PyTorch, LLM, LangChain, RAG",
+        "☁️ Cloud / DevOps": "Linux, Git, Docker, Kubernetes, AWS, CI/CD, Terraform",
+        "🛡️ Cybersecurity": "Linux, Networking, Python, Wireshark, Cybersecurity, OWASP",
+        "📊 Data Science": "Python, SQL, Statistics, Pandas, NumPy, Machine Learning",
     }
-
-    preset_cols = st.columns(2)
-    p_idx = 0
-    for name, p_skills in PRESETS.items():
-        col = preset_cols[p_idx % 2]
-        if col.button(name, use_container_width=True):
-            st.session_state.skill_input_text = p_skills
+    cols = st.columns(2)
+    for i, (name, skills) in enumerate(presets.items()):
+        if cols[i % 2].button(name, use_container_width=True):
+            st.session_state.skill_input_text = skills
             st.session_state.analysis_done = False
             st.rerun()
-        p_idx += 1
 
     st.markdown("---")
-    st.markdown(f"**Database Info:** `{len(careers)}` Tech Careers loaded across `{len(all_categories)}` categories.")
+    st.caption(
+        f"Career database: {len(careers)} careers • {len(categories)} domains. "
+        "If careers.csv is present, its career requirements are used."
+    )
 
 # =========================================================
-# SKILL INPUT SECTION
+# 1. COMPREHENSIVE STUDENT PROFILE MODULE
 # =========================================================
-
-st.markdown("### 1. ✍️ Enter Your Tech Skills")
-
-# Quick skill chips
-st.markdown("<small style='color:#94A3B8;'>Click to quickly append popular skills:</small>", unsafe_allow_html=True)
-quick_skills_list = [
-    "Python", "JavaScript", "SQL", "React", "Docker", "Git", 
-    "AWS", "Linux", "Machine Learning", "DSA", "Node.js", 
-    "Kubernetes", "Figma", "C++", "Java", "HTML/CSS"
-]
-
-quick_cols = st.columns(8)
-for i, q_skill in enumerate(quick_skills_list):
-    col = quick_cols[i % 8]
-    if col.button(f"+{q_skill}", key=f"quick_{q_skill}", use_container_width=True):
-        current = st.session_state.skill_input_text.strip()
-        if current:
-            st.session_state.skill_input_text = current + f", {q_skill}"
-        else:
-            st.session_state.skill_input_text = q_skill
-        st.rerun()
-
-skill_text = st.text_area(
-    label="Skills (comma-separated):",
-    value=st.session_state.skill_input_text,
-    height=90,
-    placeholder="e.g. Python, SQL, Git, React, Docker, Machine Learning, HTML, CSS..."
+st.markdown("### 1. 👤 Comprehensive Student Profile")
+st.caption(
+    "Patent-aligned inputs: CGPA/academic information, skills, programming languages, "
+    "projects, certifications, interests and career goal."
 )
-st.session_state.skill_input_text = skill_text
 
-action_col1, action_col2, action_col3 = st.columns([3, 1, 2])
-with action_col1:
-    analyze_button = st.button("🚀 Analyze My Careers", type="primary", use_container_width=True)
-with action_col2:
-    if st.button("🗑️ Clear", use_container_width=True):
+p1, p2, p3 = st.columns(3)
+with p1:
+    degree = st.text_input("Degree / Program", value="B.Tech CSE")
+    institute = st.text_input("Institute / University", value="")
+    cgpa = st.number_input("CGPA", min_value=0.0, max_value=10.0, value=6.71, step=0.01)
+with p2:
+    semester = st.number_input("Current Semester", min_value=1, max_value=12, value=4, step=1)
+    interests_text = st.text_input("Interests", value="Technology, AI, Cloud")
+    career_goal = st.text_input("Career Goal", value="")
+with p3:
+    programming_text = st.text_input("Programming Languages", value="Python, C++, JavaScript")
+    project_count = st.number_input("Completed Projects", min_value=0, max_value=100, value=0, step=1)
+    certification_count = st.number_input("Certifications", min_value=0, max_value=100, value=0, step=1)
+
+# =========================================================
+# 2. MULTI-SOURCE SKILL EVIDENCE
+# =========================================================
+st.markdown("### 2. 🧾 Multi-Source Skill Evidence")
+st.caption(
+    "Same skill can be supported by self-declaration, project work, certification and assessment. "
+    "The engine combines these evidence sources into a structured skill profile."
+)
+
+e1, e2 = st.columns(2)
+with e1:
+    st.markdown("**Self-declared technical skills**")
+    skill_text = st.text_area(
+        "Skills",
+        value=st.session_state.skill_input_text,
+        height=85,
+        label_visibility="collapsed",
+        placeholder="Python, SQL, Git, DSA..."
+    )
+    st.session_state.skill_input_text = skill_text
+
+    st.markdown("**Project-demonstrated skills / technologies**")
+    project_skills_text = st.text_area(
+        "Project skills",
+        value=st.session_state.project_skills_text,
+        height=80,
+        label_visibility="collapsed",
+        placeholder="React, Node.js, SQL, APIs..."
+    )
+    st.session_state.project_skills_text = project_skills_text
+
+with e2:
+    st.markdown("**Certification-supported skills / technologies**")
+    certification_skills_text = st.text_area(
+        "Certification skills",
+        value=st.session_state.certification_skills_text,
+        height=80,
+        label_visibility="collapsed",
+        placeholder="AWS, Linux, Python..."
+    )
+    st.session_state.certification_skills_text = certification_skills_text
+
+    st.markdown("**Assessment-demonstrated skills**")
+    assessment_skills_text = st.text_area(
+        "Assessment skills",
+        value=st.session_state.assessment_skills_text,
+        height=80,
+        label_visibility="collapsed",
+        placeholder="DSA, SQL, Python..."
+    )
+    st.session_state.assessment_skills_text = assessment_skills_text
+
+# =========================================================
+# 3. ASSESSMENT MODULE
+# =========================================================
+st.markdown("### 3. 📝 Assessment Module")
+st.caption("Technical, communication and grammar/English assessment results are incorporated into the profile.")
+
+a1, a2, a3 = st.columns(3)
+with a1:
+    technical_assessment = st.slider("Technical Assessment Score", 0, 100, 60)
+with a2:
+    communication_score = st.slider("Communication Assessment", 0, 100, 60)
+with a3:
+    grammar_score = st.slider("Grammar / English Assessment", 0, 100, 60)
+
+assessment_note = st.text_input(
+    "Assessment / evidence note (optional)",
+    placeholder="e.g. coding test, aptitude test, communication round, English test"
+)
+
+# =========================================================
+# BUILD PROFILE + ANALYZE
+# =========================================================
+profile = {
+    "degree": degree.strip(),
+    "institute": institute.strip(),
+    "cgpa": cgpa,
+    "semester": semester,
+    "interests": parse_skill_text(interests_text),
+    "career_goal": career_goal.strip(),
+    "programming_languages": parse_skill_text(programming_text),
+    "project_count": project_count,
+    "certification_count": certification_count,
+    "skills": parse_skill_text(skill_text),
+    "project_skills": parse_skill_text(project_skills_text),
+    "certification_skills": parse_skill_text(certification_skills_text),
+    "assessment_skills": parse_skill_text(assessment_skills_text),
+    "technical_assessment": technical_assessment,
+    "communication_score": communication_score,
+    "grammar_score": grammar_score,
+    "assessment_note": assessment_note.strip(),
+}
+
+# Technical assessment result itself is part of the evidence model.
+# When an assessment skill is explicitly named, its confidence is reinforced.
+if technical_assessment >= 70:
+    profile["assessment_evidence_level"] = "strong"
+elif technical_assessment >= 45:
+    profile["assessment_evidence_level"] = "partial"
+else:
+    profile["assessment_evidence_level"] = "limited"
+
+b1, b2, b3 = st.columns([3, 1, 1])
+with b1:
+    analyze_button = st.button(
+        "🚀 Build Structured Profile & Analyze Careers",
+        type="primary",
+        use_container_width=True
+    )
+with b2:
+    if st.button("🗑️ Clear Skill Evidence", use_container_width=True):
         st.session_state.skill_input_text = ""
+        st.session_state.project_skills_text = ""
+        st.session_state.certification_skills_text = ""
+        st.session_state.assessment_skills_text = ""
         st.session_state.analysis_done = False
         st.rerun()
-
-# =========================================================
-# TRIGGER ANALYSIS
-# =========================================================
+with b3:
+    if st.button("🔄 Reassess Profile", use_container_width=True):
+        st.session_state.analysis_done = True
+        st.session_state.student_profile = profile
+        st.session_state.reassessment_history.append({
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "technical": technical_assessment,
+            "communication": communication_score,
+            "grammar": grammar_score,
+        })
+        st.rerun()
 
 if analyze_button:
-    if not skill_text.strip():
-        st.warning("⚠️ Please enter at least one skill or select a quick preset from the sidebar.")
-        st.session_state.analysis_done = False
+    if not profile["skills"] and not profile["project_skills"] and not profile["certification_skills"] and not profile["assessment_skills"]:
+        st.warning("Please provide at least one skill/evidence source.")
         st.stop()
 
-    student_skills = []
-    for s in skill_text.split(","):
-        s_clean = s.strip()
-        if s_clean:
-            student_skills.append(normalize_skill(s_clean))
-
-    filtered_careers = careers
+    filtered = careers
     if selected_category != "All Domains":
-        filtered_careers = [c for c in careers if c["category"] == selected_category]
+        filtered = [c for c in filtered if c["category"] == selected_category]
 
-    results = []
-    for c in filtered_careers:
-        res = analyze_career(c, student_skills)
-        results.append(res)
-
+    results = [analyze_career(c, profile) for c in filtered]
     results.sort(key=lambda x: x["percentage"], reverse=True)
 
-    st.session_state.student_skills = student_skills
+    # Selected target career is moved to the front for focused requirement mapping.
+    if target_career != "Auto-match from profile":
+        exact = [r for r in results if r["career"] == target_career]
+        if exact:
+            target_result = exact[0]
+            results = [target_result] + [r for r in results if r is not target_result]
+
+    # A declared career goal is also used as a target when it exactly matches
+    # a known career and no explicit sidebar target was selected.
+    elif career_goal.strip():
+        goal = career_goal.strip().lower()
+        exact = [r for r in results if r["career"].lower() == goal]
+        if exact:
+            target_result = exact[0]
+            results = [target_result] + [r for r in results if r is not target_result]
+
+    st.session_state.student_profile = profile
+    st.session_state.student_skills = profile["skills"]
     st.session_state.results = results
     st.session_state.analysis_done = True
 
 # =========================================================
-# RESULTS DISPLAY (TABS & MODERN DASHBOARD)
+# RESULTS
 # =========================================================
-
 if st.session_state.analysis_done and st.session_state.results:
     results = st.session_state.results
-    student_skills = st.session_state.student_skills
+    profile = st.session_state.student_profile
 
-    # Filter by user sidebar settings
     if selected_category != "All Domains":
         active_results = [r for r in results if r["category"] == selected_category]
     else:
         active_results = results
-
-    active_results = [r for r in active_results if r["percentage"] >= min_match_filter]
-
-    st.markdown("---")
+    active_results = [r for r in active_results if r["percentage"] >= min_match]
 
     if not active_results:
-        st.info(f"No careers match your current filter threshold (≥ {min_match_filter}%). Lower the slider in the sidebar to see all matches.")
+        st.info("No careers meet the current filter. Lower Minimum Match % in the sidebar.")
         st.stop()
 
-    top_result = active_results[0]
-    strong_matches = sum(1 for r in active_results if r["percentage"] >= 75)
-    moderate_matches = sum(1 for r in active_results if 50 <= r["percentage"] < 75)
-    total_analyzed = len(active_results)
+    top = active_results[0]
+    evidence_map, raw_evidence = build_evidence_map(profile)
 
-    # 4-Column KPI Metric Cards
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    with kpi1:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-title">🏆 Top Match Career</div>
-            <div class="metric-value" style="font-size:1.35rem; color:#818CF8;">{top_result['career']}</div>
-            <div class="metric-sub">{top_result['category']}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with kpi2:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-title">🎯 Highest Match Score</div>
-            <div class="metric-value" style="color:#34D399;">{round(top_result['percentage'])}%</div>
-            <div class="metric-sub">Best industry alignment</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with kpi3:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-title">🟢 Strong Matches (≥75%)</div>
-            <div class="metric-value" style="color:#10B981;">{strong_matches}</div>
-            <div class="metric-sub">Careers you are ready for</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with kpi4:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-title">🟡 Moderate Matches (50-74%)</div>
-            <div class="metric-value" style="color:#FBBF24;">{moderate_matches}</div>
-            <div class="metric-sub">Requires 1-2 key skills</div>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("### 4. 🧠 Structured Student Skill Profile")
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    sp1, sp2, sp3, sp4 = st.columns(4)
+    sp1.metric("Academic Readiness", f"{academic_readiness(profile['cgpa']):.0f}%")
+    sp2.metric("Technical Assessment", f"{profile['technical_assessment']}%")
+    sp3.metric("Communication", f"{profile['communication_score']}%")
+    sp4.metric("Grammar / English", f"{profile['grammar_score']}%")
 
-    # Tabs for modern navigation
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📊 Top Matches & High-ROI Skills",
-        "📋 All Careers Breakdown",
-        "🔮 What-If Simulator",
-        "🗺️ Personalized Learning Roadmap"
+    st.markdown("**Evidence-backed skills detected:**")
+    if evidence_map:
+        evidence_rows = []
+        for skill, conf in sorted(evidence_map.items(), key=lambda x: -x[1]):
+            evidence_rows.append({
+                "Skill": skill.title(),
+                "Evidence Strength": f"{conf*100:.0f}%",
+                "Status": "Strong" if conf >= .75 else "Partial" if conf >= .45 else "Limited",
+                "Sources": ", ".join(raw_evidence.get(skill, [])) if raw_evidence.get(skill) else "—",
+            })
+        st.dataframe(pd.DataFrame(evidence_rows), use_container_width=True, hide_index=True)
+    else:
+        st.info("No structured evidence available yet.")
+
+    st.markdown("### 5. 🎯 Career Matching & Requirement Mapping")
+    st.caption(
+        "Each career is represented as a requirement profile. Matching combines technical "
+        "competencies with practical/project evidence, communication and academic information."
+    )
+
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Top Career Match", top["career"])
+    k2.metric("Overall Alignment", f"{top['percentage']:.0f}%")
+    k3.metric("Technical Alignment", f"{top['technical_pct']:.0f}%")
+    k4.metric("Practical Evidence", f"{top['practical_pct']:.0f}%")
+
+    tabs = st.tabs([
+        "📊 Career Matching",
+        "🔎 Skill-Gap Analysis",
+        "📌 Gap Prioritization",
+        "🗺️ Personalized Roadmap",
+        "🔄 Reassessment"
     ])
 
     # -----------------------------------------------------
-    # TAB 1: EXECUTIVE SUMMARY & HIGH ROI SKILLS
+    # TAB 1: CAREER MATCHING
     # -----------------------------------------------------
-    with tab1:
-        c_left, c_right = st.columns([3, 2])
-        with c_left:
-            st.markdown("#### 📈 Top 8 Career Fit Comparison")
-            top_8 = active_results[:8]
-            chart_df = pd.DataFrame({
-                "Career": [r["career"] for r in top_8],
-                "Match Percentage": [round(r["percentage"]) for r in top_8],
-                "Category": [r["category"] for r in top_8]
-            })
+    with tabs[0]:
+        top_8 = active_results[:8]
+        chart_df = pd.DataFrame({
+            "Career": [r["career"] for r in top_8],
+            "Overall Alignment": [round(r["percentage"]) for r in top_8],
+            "Technical": [round(r["technical_pct"]) for r in top_8],
+            "Practical": [round(r["practical_pct"]) for r in top_8],
+        })
+        chart = alt.Chart(chart_df).mark_bar(cornerRadiusTopRight=6, cornerRadiusBottomRight=6).encode(
+            x=alt.X("Overall Alignment:Q", scale=alt.Scale(domain=[0, 100]), title="Alignment (%)"),
+            y=alt.Y("Career:N", sort="-x", title=""),
+            color=alt.Color("Overall Alignment:Q", scale=alt.Scale(scheme="viridis"), legend=None),
+            tooltip=["Career", "Overall Alignment", "Technical", "Practical"],
+        ).properties(height=320)
+        st.altair_chart(chart, use_container_width=True)
 
-            chart = alt.Chart(chart_df).mark_bar(cornerRadiusTopRight=6, cornerRadiusBottomRight=6).encode(
-                x=alt.X("Match Percentage:Q", scale=alt.Scale(domain=[0, 100]), title="Match (%)"),
-                y=alt.Y("Career:N", sort="-x", title=""),
-                color=alt.Color("Match Percentage:Q", scale=alt.Scale(scheme="viridis"), legend=None),
-                tooltip=["Career", "Category", "Match Percentage"]
-            ).properties(height=320)
+        if profile.get("career_goal"):
+            st.info(f"🎯 Declared career goal: **{profile['career_goal']}**")
+        if target_career != "Auto-match from profile":
+            st.info(f"🎯 Selected target career requirement profile: **{target_career}**")
 
-            st.altair_chart(chart, use_container_width=True)
-
-        with c_right:
-            st.markdown("#### 💡 High-ROI Skills To Learn Next")
-            st.caption("These missing skills appear most frequently across your top matching careers. Mastering them gives the highest career boost:")
-
-            missing_pool = []
-            for r in active_results[:10]:
-                for m in r["missing"]:
-                    missing_pool.append(m["skill"])
-
-            top_missing = Counter(missing_pool).most_common(5)
-            if top_missing:
-                for skill_name, freq in top_missing:
-                    st.markdown(f"""
-                    <div style="background:rgba(255,255,255,0.05); border-left:4px solid #6366F1; padding:0.6rem 0.9rem; border-radius:6px; margin-bottom:0.45rem;">
-                        <strong style="color:#EEF2FF; font-size:0.95rem;">{skill_name}</strong>
-                        <span style="float:right; font-size:0.82rem; color:#A5B4FC; font-weight:600;">Unlocks {freq} top careers</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.success("🎉 Amazing! You have zero missing skills across your top careers!")
-
-        st.markdown("---")
-        st.markdown("#### 🌟 Top 3 Career Spotlight")
-        spot_cols = st.columns(3)
-        for idx, res in enumerate(active_results[:3]):
-            with spot_cols[idx]:
-                score = round(res["percentage"])
-                color_class = "match-green" if score >= 75 else ("match-amber" if score >= 50 else "match-red")
-                st.markdown(f"""
-                <div class="spotlight-card">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                        <span style="font-size:0.8rem; color:#C7D2FE; font-weight:700;">{res['category'].upper()}</span>
-                        <span class="match-pill {color_class}">{score}% Match</span>
-                    </div>
-                    <h3 style="margin-top:0.2rem; margin-bottom:0.6rem; color:#FFFFFF;">{res['career']}</h3>
-                    <div style="margin-bottom:0.5rem;">
-                        <small style="color:#94A3B8;">✅ Covered: </small>
-                        <b style="color:#34D399;">{len(res['strong'])} skills</b> | 
-                        <small style="color:#94A3B8;">❌ Missing: </small>
-                        <b style="color:#F87171;">{len(res['missing'])} skills</b>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                if res["missing"]:
-                    st.markdown("**Key skills to unlock 100%:**")
-                    for m in res["missing"][:2]:
-                        st.markdown(f"• `{m['skill']}` (Priority: {['LOW','MEDIUM','HIGH'][m['weight']-1]})")
+        st.markdown("#### Requirement dimensions for the selected/top career")
+        dim_df = pd.DataFrame({
+            "Dimension": ["Technical", "Practical / Project Evidence", "Communication", "Academic"],
+            "Current Evidence": [
+                top["technical_pct"], top["practical_pct"],
+                top["communication_pct"], top["academic_pct"]
+            ]
+        })
+        st.bar_chart(dim_df.set_index("Dimension"))
 
     # -----------------------------------------------------
-    # TAB 2: EXPLORE ALL CAREERS
+    # TAB 2: SKILL GAP ANALYSIS
     # -----------------------------------------------------
-    with tab2:
-        search_query = st.text_input("🔍 Search career or skill within results:", "")
-
-        filtered_view = active_results
-        if search_query.strip():
-            sq = search_query.lower().strip()
-            filtered_view = [
+    with tabs[1]:
+        search = st.text_input("🔍 Search career or skill", key="gap_search")
+        view = active_results
+        if search.strip():
+            q = search.lower().strip()
+            view = [
                 r for r in active_results
-                if sq in r["career"].lower() or sq in r["category"].lower() or any(sq in s["skill"].lower() for s in r["strong"] + r["missing"])
+                if q in r["career"].lower()
+                or q in r["category"].lower()
+                or any(q in s["skill"].lower() for s in r["strong"] + r["partial"] + r["missing"])
             ]
 
-        st.caption(f"Showing {len(filtered_view)} careers (sorted by highest match):")
-
-        for res in filtered_view:
-            pct = round(res["percentage"])
-            if pct >= 75:
-                tag_label = "🟢 Strong Match"
-                bar_color = "#10B981"
-            elif pct >= 50:
-                tag_label = "🟡 Moderate Match"
-                bar_color = "#F59E0B"
-            else:
-                tag_label = "🔴 Skill Gap"
-                bar_color = "#EF4444"
-
-            title_text = f"{res['career']} — {pct}% | {res['category']} ({tag_label})"
-            with st.expander(title_text):
-                st.progress(min(pct / 100, 1.0))
-
-                s_col1, s_col2, s_col3 = st.columns([1, 1, 1.2])
-                with s_col1:
-                    st.markdown("**✅ Strong Skills:**")
+        for res in view:
+            with st.expander(f"{res['career']} — {res['percentage']:.0f}%"):
+                st.progress(min(res["percentage"] / 100.0, 1.0))
+                d1, d2, d3 = st.columns(3)
+                with d1:
+                    st.markdown("**🟢 Strong / evidence-supported**")
                     if res["strong"]:
                         for s in res["strong"]:
-                            st.markdown(f"<span class='skill-badge badge-strong'>✔ {s['skill']}</span>", unsafe_allow_html=True)
-                    else:
-                        st.caption("None yet")
-
-                with s_col2:
-                    st.markdown("**🟡 Partial Skills:**")
-                    if res["partial"]:
-                        for s in res["partial"]:
-                            st.markdown(f"<span class='skill-badge badge-partial'>~ {s['skill']}</span>", unsafe_allow_html=True)
+                            st.markdown(
+                                f"<span class='skill-badge badge-strong'>✔ {s['skill']} "
+                                f"({s['confidence']*100:.0f}% evidence)</span>",
+                                unsafe_allow_html=True
+                            )
                     else:
                         st.caption("None")
-
-                with s_col3:
-                    st.markdown("**❌ Missing Skills to Learn:**")
+                with d2:
+                    st.markdown("**🟡 Partial**")
+                    if res["partial"]:
+                        for s in res["partial"]:
+                            st.markdown(
+                                f"<span class='skill-badge badge-partial'>~ {s['skill']} "
+                                f"({s['confidence']*100:.0f}%)</span>",
+                                unsafe_allow_html=True
+                            )
+                    else:
+                        st.caption("None")
+                with d3:
+                    st.markdown("**🔴 Missing / insufficient**")
                     if res["missing"]:
                         for s in res["missing"]:
-                            pri_class = "pri-high" if s["weight"] == 3 else ("pri-med" if s["weight"] == 2 else "pri-low")
-                            pri_label = "HIGH" if s["weight"] == 3 else ("MED" if s["weight"] == 2 else "LOW")
-                            st.markdown(f"<span class='skill-badge badge-missing'>{s['skill']} <span class='badge-priority {pri_class}'>{pri_label}</span></span>", unsafe_allow_html=True)
+                            label = "HIGH" if s["weight"] >= 3 else "MED" if s["weight"] == 2 else "LOW"
+                            cls = "pri-high" if s["weight"] >= 3 else "pri-med" if s["weight"] == 2 else "pri-low"
+                            st.markdown(
+                                f"<span class='skill-badge badge-missing'>{s['skill']} "
+                                f"<span class='badge-priority {cls}'>{label}</span></span>",
+                                unsafe_allow_html=True
+                            )
                     else:
-                        st.success("🎉 100% Complete! All required skills covered.")
+                        st.success("All mapped technical skills have evidence.")
 
     # -----------------------------------------------------
-    # TAB 3: WHAT-IF SIMULATOR
+    # TAB 3: PRIORITIZATION
     # -----------------------------------------------------
-    with tab3:
-        st.markdown("#### 🔮 What-If Career Simulation Engine")
-        st.write("Select any target career and choose a skill you're considering learning. See exactly how much your match score will improve and verify prerequisite readiness.")
-
-        sim_career_names = [r["career"] for r in active_results]
-        if sim_career_names:
-            sim_col1, sim_col2 = st.columns(2)
-            with sim_col1:
-                selected_career_name = st.selectbox(
-                    "Select Target Career:",
-                    sim_career_names,
-                    key="sim_career_select"
-                )
-            selected_res = next(r for r in active_results if r["career"] == selected_career_name)
-            missing_for_sim = [m["skill"] for m in selected_res["missing"]]
-
-            with sim_col2:
-                if missing_for_sim:
-                    selected_skill_sim = st.selectbox(
-                        "Select Skill to Learn:",
-                        missing_for_sim,
-                        key=f"sim_skill_{selected_career_name}"
-                    )
-                else:
-                    selected_skill_sim = None
-                    st.info("No missing skills for this career! You are already at 100% match.")
-
-            if selected_skill_sim:
-                career_obj = next(c for c in careers if c["career"] == selected_career_name)
-                sim_res = what_if_analysis(career_obj, student_skills, selected_skill_sim)
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                sc1, sc2, sc3 = st.columns(3)
-                sc1.metric("Current Match", f"{round(sim_res['before'])}%")
-                sc2.metric("After Learning", f"{round(sim_res['after'])}%", delta=f"+{round(sim_res['improvement'])}%")
-                sc3.metric("Match Score Boost", f"+{round(sim_res['improvement'])}%")
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                if sim_res["missing_prereqs"]:
-                    st.warning(f"⚠️ **Prerequisite Advisory for {selected_skill_sim}:** Before learning this skill, it is strongly recommended to learn: **{', '.join([p.title() for p in sim_res['missing_prereqs']])}**.")
-                else:
-                    st.success(f"✅ **Ready to Learn:** You have all foundational prerequisites to master **{selected_skill_sim}** immediately!")
-
-    # -----------------------------------------------------
-    # TAB 4: PERSONALIZED ROADMAP
-    # -----------------------------------------------------
-    with tab4:
-        st.markdown("#### 🗺️ Personalized Learning Roadmap")
-        st.write("Generate a structured, dependency-aware step-by-step learning path for your desired tech career.")
-
-        roadmap_career_name = st.selectbox(
-            "Choose Career for Learning Roadmap:",
-            [r["career"] for r in active_results],
-            key="roadmap_career_select"
+    with tabs[2]:
+        st.markdown("#### 📌 Career-Specific Skill-Gap Prioritization")
+        st.caption(
+            "Priority is based on career requirement weight plus prerequisite/dependency structure. "
+            "This turns a list of gaps into an ordered development queue."
         )
 
-        roadmap_res = next(r for r in active_results if r["career"] == roadmap_career_name)
-        roadmap_items = generate_roadmap(roadmap_res, student_skills)
+        priority_career_name = st.selectbox(
+            "Career to prioritize",
+            [r["career"] for r in active_results],
+            key="priority_career"
+        )
+        priority_res = next(r for r in active_results if r["career"] == priority_career_name)
+        roadmap_items = generate_roadmap(priority_res, profile)
 
-        if not roadmap_items:
-            st.success(f"🎉 Congratulations! You have fully satisfied all skill requirements for **{roadmap_career_name}**!")
+        priority_rows = []
+        for idx, item in enumerate(roadmap_items, 1):
+            dep_score, prereqs = dependency_score(item["skill"], profile["skills"])
+            priority_value = item["weight"] * 10 + len(prereqs) * 5
+            priority_rows.append({
+                "Order": idx,
+                "Skill Gap": item["skill"],
+                "Career Weight": item["weight"],
+                "Evidence": f"{item['confidence']*100:.0f}%",
+                "Prerequisites Missing": ", ".join(x.title() for x in prereqs) if prereqs else "None",
+                "Priority Value": priority_value,
+            })
+        if priority_rows:
+            st.dataframe(pd.DataFrame(priority_rows), use_container_width=True, hide_index=True)
         else:
-            for step_num, item in enumerate(roadmap_items, start=1):
-                pri_label = "HIGH Priority" if item["weight"] == 3 else ("MEDIUM Priority" if item["weight"] == 2 else "LOW Priority")
-                pri_badge = "pri-high" if item["weight"] == 3 else ("pri-med" if item["weight"] == 2 else "pri-low")
+            st.success("No prioritized gaps for this career.")
 
-                with st.container():
-                    st.markdown(f"""
-                    <div style="background:rgba(255,255,255,0.04); border-left:4px solid #818CF8; border-radius:10px; padding:1rem 1.25rem; margin-bottom:0.8rem;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <h4 style="margin:0; color:#FFFFFF;">Step {step_num}: Learn {item['skill'].title()}</h4>
-                            <span class="badge-priority {pri_badge}">{pri_label}</span>
-                        </div>
-                    """, unsafe_allow_html=True)
+        st.markdown("#### 🔮 What-If Skill Simulation")
+        if priority_res["missing"]:
+            sim_skill = st.selectbox(
+                "If you learn this skill next...",
+                [x["skill"] for x in priority_res["missing"]],
+                key="what_if_skill"
+            )
+            career_obj = next(c for c in careers if c["career"] == priority_career_name)
+            sim = what_if_analysis(career_obj, profile, sim_skill)
+            q1, q2, q3 = st.columns(3)
+            q1.metric("Current", f"{sim['before']:.0f}%")
+            q2.metric("After simulated skill", f"{sim['after']:.0f}%", delta=f"{sim['improvement']:+.0f}%")
+            q3.metric("Prerequisite Readiness", f"{sim['readiness']*100:.0f}%")
+            if sim["missing_prereqs"]:
+                st.warning("Prerequisites to address first: " + ", ".join(x.title() for x in sim["missing_prereqs"]))
+            else:
+                st.success("All mapped prerequisites are currently covered.")
+        else:
+            st.success("No missing skills to simulate for this career.")
 
-                    if item["before"]:
-                        st.markdown(f"<p style='color:#FBBF24; margin:0.4rem 0 0 0; font-size:0.88rem;'>⚠️ <b>Foundations needed first:</b> {', '.join([b.title() for b in item['before']])}</p></div>", unsafe_allow_html=True)
-                    else:
-                        st.markdown("<p style='color:#34D399; margin:0.4rem 0 0 0; font-size:0.88rem;'>✅ <b>Ready to learn now:</b> No unmet prerequisites.</p></div>", unsafe_allow_html=True)
+    # -----------------------------------------------------
+    # TAB 4: ADAPTIVE LEARNING ROADMAP
+    # -----------------------------------------------------
+    with tabs[3]:
+        st.markdown("#### 🗺️ Personalized Learning Roadmap")
+        roadmap_career_name = st.selectbox(
+            "Choose target career",
+            [r["career"] for r in active_results],
+            key="roadmap_career"
+        )
+        roadmap_res = next(r for r in active_results if r["career"] == roadmap_career_name)
+        items = generate_roadmap(roadmap_res, profile)
+
+        if not items:
+            st.success("🎉 No unresolved skill gaps detected for this career.")
+        else:
+            for step, item in enumerate(items, 1):
+                priority = "HIGH" if item["weight"] >= 3 else "MEDIUM" if item["weight"] == 2 else "LOW"
+                cls = "pri-high" if priority == "HIGH" else "pri-med" if priority == "MEDIUM" else "pri-low"
+                st.markdown(
+                    f"<div style='background:rgba(255,255,255,.04);border-left:4px solid #818CF8;"
+                    f"border-radius:10px;padding:1rem 1.2rem;margin:.6rem 0;'>"
+                    f"<div style='display:flex;justify-content:space-between;'>"
+                    f"<b style='color:#FFFFFF;'>Step {step}: {item['skill'].title()}</b>"
+                    f"<span class='badge-priority {cls}'>{priority}</span></div>"
+                    f"<div style='color:#A5B4FC;margin-top:.35rem;'>"
+                    f"Career relevance weight: {item['weight']} • Current evidence: {item['confidence']*100:.0f}%"
+                    f"</div></div>",
+                    unsafe_allow_html=True
+                )
+                if item["before"]:
+                    st.warning("Foundation first: " + ", ".join(x.title() for x in item["before"]))
+                else:
+                    st.success("Ready to learn now — no unmet prerequisite in the dependency graph.")
+
+            st.markdown("---")
+            st.markdown("**Suggested learning resources (roadmap embodiment):**")
+            st.write("Courses • Tutorials • Practice exercises • Projects • Certifications")
+
+    # -----------------------------------------------------
+    # TAB 5: CLOSED-LOOP REASSESSMENT
+    # -----------------------------------------------------
+    with tabs[4]:
+        st.markdown("#### 🔄 Reassessment & Profile Update")
+        st.caption(
+            "After learning or another assessment, update the evidence above and use Reassess Profile. "
+            "The career gaps and roadmap are recalculated from the new profile."
+        )
+
+        if st.session_state.reassessment_history:
+            hist = pd.DataFrame(st.session_state.reassessment_history)
+            st.dataframe(hist, use_container_width=True, hide_index=True)
+        else:
+            st.info("No reassessment event recorded yet.")
+
+        r1, r2, r3 = st.columns(3)
+        r1.metric("Current Technical Assessment", f"{profile['technical_assessment']}%")
+        r2.metric("Current Communication", f"{profile['communication_score']}%")
+        r3.metric("Current Grammar / English", f"{profile['grammar_score']}%")
+
+        st.markdown("**Closed-loop flow:**")
+        st.markdown(
+            "Student Data → Assessment → Structured Skill Profile → Career Matching → "
+            "Skill-Gap Analysis → Gap Prioritization → Learning Roadmap → Reassessment → Updated Profile & Roadmap"
+        )
 
 # =========================================================
 # FOOTER
 # =========================================================
-
 st.markdown("---")
-st.markdown("""
-<div style="text-align:center; color:#94A3B8; font-size:0.85rem; padding:1rem 0;">
-    Career & Skill Gap AI Advisor • Built with Streamlit • 64+ Tech Careers • Comprehensive Industry Benchmark
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    "<div style='text-align:center;color:#94A3B8;font-size:.82rem;padding:1rem 0;'>"
+    "AI-Based Personalized Career Recommendation and Dynamic Skill Gap Analysis System • "
+    "Patent-aligned prototype • Streamlit"
+    "</div>",
+    unsafe_allow_html=True
+)
